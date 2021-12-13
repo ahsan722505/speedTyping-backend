@@ -12,18 +12,11 @@ const io = new Server(httpServer, { cors: {
   let rooms={};
   let validRoomIds=[];
   let times={};
-  // const startCountDown=(id)=>{
-  //   setInterval(()=>{
-  //     times[id]--;
-  //     io.to(id).emit("update-time",times[id]);
-  //    },1000);
-  // }
   io.on("connection",(socket)=>{
       socket.on("create-room",(name)=>{
         const newId = uuidv4();
           socket.join(newId);
           rooms[newId]=[{name : name , id : socket.id}];
-          // times[newId]=15;
           validRoomIds.push(newId);
           socket.emit("take-id",newId);
           socket.emit("take-players",rooms[newId])
@@ -45,6 +38,15 @@ const io = new Server(httpServer, { cors: {
         socket.emit("take-players",rooms[roomId]);
         io.to(roomId).emit("start-timer",times[roomId]);
 
+      })
+
+      socket.on("start-match",(roomId)=>{
+          validRoomIds=validRoomIds.filter(id=> id != roomId);
+          io.to(roomId).emit("start-game");
+          
+      })
+      socket.on("take-characters",(data)=>{
+        io.to(data.roomId).emit("manipulate-position",{playerId : data.id, currentCharacters : data.currentCharacters});
       })
   })
   httpServer.listen(process.env.PORT || 8080);
