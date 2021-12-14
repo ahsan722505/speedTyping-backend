@@ -12,11 +12,12 @@ const io = new Server(httpServer, { cors: {
   let rooms={};
   let validRoomIds=[];
   let times={};
+  const positions=["1st","2nd","3rd","4th","5th","6th","7th"];
   io.on("connection",(socket)=>{
       socket.on("create-room",(name)=>{
         const newId = uuidv4();
           socket.join(newId);
-          rooms[newId]=[{name : name , id : socket.id}];
+          rooms[newId]=[{name : name , id : socket.id,position : 0}];
           validRoomIds.push(newId);
           socket.emit("take-id",newId);
           socket.emit("take-players",rooms[newId])
@@ -25,7 +26,7 @@ const io = new Server(httpServer, { cors: {
       socket.on("join-room",(data)=>{
         if(validRoomIds.includes(data.roomId)){
           io.to(data.roomId).emit("update-players",{name: data.name,id : socket.id});
-          rooms[data.roomId].push({name : data.name , id : socket.id});
+          rooms[data.roomId].push({name : data.name , id : socket.id , position : 0});
           if(rooms[data.roomId].length === 2) times[data.roomId]=new Date(); 
           socket.join(data.roomId);
           socket.emit("proceed",true);
@@ -47,6 +48,24 @@ const io = new Server(httpServer, { cors: {
       })
       socket.on("take-characters",(data)=>{
         io.to(data.roomId).emit("manipulate-position",{playerId : data.id, currentCharacters : data.currentCharacters});
+      })
+      socket.on("complete",(data)=>{
+        console.log(rooms[data.roomId]);
+        let maxPosition=0;
+        rooms[data.roomId].forEach(each=>{
+          if(each.position > maxPosition) maxPosition=each.position;
+        })
+        maxPosition++;
+        rooms[data.roomId]=rooms[data.roomId].map(each=>{
+          return {...each , position : (each.id === data.id ) ? maxPosition : each.position}
+        })
+        if(maxPosition == 1) maxPosition=`${maxPosition}st`;
+        else if(maxPosition == 2) maxPosition=`${maxPosition}nd`;
+        else if(maxPosition == 3) maxPosition=`${maxPosition}rd`;
+        else  maxPosition=`${maxPosition}th`;
+        io.to(data.roomId).emit("finish",{id : data.id , wpm : data.wpm , position : maxPosition});
+        
+        console.log(rooms[data.roomId]);
       })
   })
   httpServer.listen(process.env.PORT || 8080);
