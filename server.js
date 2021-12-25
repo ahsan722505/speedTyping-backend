@@ -12,7 +12,7 @@ const io = new Server(httpServer, { cors: {
   let rooms={};
   let validRoomIds=[];
   let times={};
-  const positions=["1st","2nd","3rd","4th","5th","6th","7th"];
+  
   io.on("connection",(socket)=>{
       socket.on("create-room",(name)=>{
         const newId = uuidv4();
@@ -21,6 +21,10 @@ const io = new Server(httpServer, { cors: {
           validRoomIds.push(newId);
           socket.emit("take-id",newId);
           socket.emit("take-players",rooms[newId])
+          setTimeout(()=>{
+            delete rooms[newId];
+            delete times[newId];
+          },900000)
       })
 
       socket.on("join-room",(data)=>{
@@ -50,7 +54,7 @@ const io = new Server(httpServer, { cors: {
         io.to(data.roomId).emit("manipulate-position",{playerId : data.id, currentCharacters : data.currentCharacters});
       })
       socket.on("complete",(data)=>{
-        console.log(rooms[data.roomId]);
+        
         let maxPosition=0;
         rooms[data.roomId].forEach(each=>{
           if(each.position > maxPosition) maxPosition=each.position;
@@ -65,7 +69,7 @@ const io = new Server(httpServer, { cors: {
         else  maxPosition=`${maxPosition}th`;
         io.to(data.roomId).emit("finish",{id : data.id , wpm : data.wpm , position : maxPosition});
         
-        console.log(rooms[data.roomId]);
+        
       })
   })
   httpServer.listen(process.env.PORT || 8080);
